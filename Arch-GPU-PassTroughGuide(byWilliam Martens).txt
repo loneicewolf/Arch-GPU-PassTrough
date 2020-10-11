@@ -1,0 +1,760 @@
+Complete - Step-By-Step Guide:
+Arch Linux Install With GPU Pass-trough Using QEMU
+
+(by William Martens)
+
+
+Originally taken from:
+https://unixresearcher.wixsite.com/linux-tutorials
+
+
+
+Part 1 - Arch Installation.
+From scratch - to complete Arch install with XFCE4
+
+-------------------------------------------------------------------
+
+Arch Linux Installation with GPU Pass-trough PART 1 OF 2
+-------------------------------------------------------------------- START
+ 
+
+Following this tutorial I will refer to HOSTNAME and USERNAME as I explain, these will be replaced by what you want.
+
+Firstly,
+# Download Arch linux Iso from: https://www.archlinux.org/download/
+# Verify the image:
+gpg --keyserver-options auto-key-retrieve --verify /path/to/archlinux.iso.sig
+# Burn it to the USB
+
+# When that's done - Boot into BIOS and
+
+# Enable  Virtualization technology, and boot the USB: #
+
+# make sure you are connected: #
+ping archlinux.org # CTRL+C to stop #
+
+# to list your storage devices: #
+fdisk -l
+
+# choose a disk to install arch on #
+# (IT GOES WITHOUT SAYING - YOU WILL FORMAT THIS DISK. SO #BACKUP ANY IMPORTANT DATA) #
+
+#Following this guide, I will refer to the
+#  target disk: /dev/sda.
+#  And it's partitions:/ dev/sda1, /dev/sda2, /dev/sda3.
+#
+
+# delete all partitions on the disk: #
+cfdisk /dev/sda
+# (1 by 1 , delete the partitions) #
+# write and quit #
+
+# this may not be needed, but I'm doing this, to get prompted later to choose GPT, DOS, ( . . . ) anyway: #
+mkfs.ext4 /dev/sda
+# yes if prompted. #
+
+
+--------------------------------------------------------------------------
+
+
+# now, we can begin make the partitions: #
+we will create 3 total:
+    /dev/sda1 - 512M                                   # 512M for the efi partition
+    /dev/sda2 - 20G                                     # At least 20G for root partition
+    /dev/sda3 - <remaining space>             #Left Remain.Space for Your own user
+
+cfdisk
+# Select GPT #
+
+--------------------------------------------------------------------------
+# make filesystems on the partitions we just created #
+--------------------------------------------------------------------------
+
+#make fat filesystem on sda1
+mkfs.fat -F32 /dev/sda1
+
+#make ext4 filesystem on sda2
+mkfs.ext4 /dev/sda2
+
+#make ext4 filesystem on sda3
+mkfs.ext4 /dev/sda3
+
+--------------------------------------------------------------------------
+# Mount and make directories on the partitions #
+--------------------------------------------------------------------------
+
+# mount sda2 (our root partition) to /mnt #
+mount /dev/sda2 /mnt
+
+# make home directory in the /mnt/ directory #
+mkdir /mnt/home
+
+# mount sda3 (home)  to /mnt/home #
+mount /dev/sda3 /mnt/home
+
+--------------------------------------------------------------------------
+pacstrap -i /mnt base linux linux-firmware sudo nano
+
+# When the system asks you what components to install, #
+# press enter to install all. And type Y for confirmation. Wait some time until it completes. #
+--------------------------------------------------------------------------
+# Generate fstab file: #
+
+genfstab -U -p /mnt >> /mnt/etc/fstab
+
+# to look in the fstab file, to see if everything is correct: #
+cat /mnt/etc/fstab
+
+#change root with bash as shell
+arch-chroot /mnt /bin/bash
+
+#Set locale
+nano /etc/locale.gen
+
+#Tip: use CTRL+W  to search for e.g  #en_US.UTF-8
+# uncomment #en_US.UTF-8
+# to look like this:
+en_US.UTF-8
+
+# when done, generate the new locale by simply executing:
+locale-gen
+
+echo "LANG=en_US.UTF-8" > /etc/locale.conf
+
+--------------------------------------------------------------------------
+# Setting up the timezone #
+ln -sf /usr/share/zoneinfo/Europe/Stockholm /etc/localtime
+
+# Setting up the local time #
+hwclock --systohc --utc
+date
+
+--------------------------------------------------------------------------
+# Setting up the hostname #
+
+echo <YOUR HOSTNAME> > /etc/hostname
+
+#where:
+#    <YOUR HOSTNAME>
+# Something you can make up here. This will be used to identify the computer you're installing
+
+# Arch on right now, on the local network.
+
+
+# edit the hosts file with <YOUR HOSTNAME> replaced with your hostname #
+
+nano /etc/hosts
+
+127.0.1.1 localhost.localdomain <YOUR HOSTNAME>
+
+# close and save the file #
+
+--------------------------------------------------------------------------
+
+# install packages: networkmanager #
+
+sudo pacman -S networkmanager
+
+
+# enable the newly downloaded packages #
+
+systemctl enable NetworkManager
+
+
+--------------------------------------------------------------------------
+# Now, we can set up a password for this Arch install: #
+
+passwd
+
+--------------------------------------------------------------------------
+
+# install packages: grub efibootmgr #
+
+sudo pacman -S grub efibootmgr
+
+# make efi directory at /boot/ #
+mkdir /boot/efi
+
+# mount sda1 (efi aprtition) to our newly created efi directory /boot/efi #
+mount /dev/sda1 /boot/efi
+
+
+lsblk # to check if everything is mounted correctly
+# /sda1 should be the efi partition
+# /sda2 should be the root partition
+# /sda3 should be the home partition
+
+# GRUB Installation #
+grub-install --target=x86_64-efi --bootloader-id=GRUB --efi-directory=/boot/efi --removable
+
+
+# update the grub config by entering the following command #
+grub-mkconfig -o /boot/grub/grub.cfg
+
+
+# Now it's time to: #
+# 1. exit our current root shell
+# 2. recursively unmount /mnt
+# 3. reboot
+
+# 1. exit our current root shell #
+exit
+
+# 2. recursively unmount /mnt #
+umount -R /mnt
+
+# 3. reboot #
+reboot
+
+
+--------------------------------------------------------------------------
+# Now it's time for user creation! #
+
+
+# to add a new user, which will be in the wheel group, with bash as shell env #  
+useradd -m -g users -G wheel -s /bin/bash <YOUR USERNAME>
+
+
+# Change <YOUR USERNAME>'s password:
+passwd <YOUR USERNAME>
+
+# where:
+#    <YOUR USERNAME> is your username. Make up something here if you want.
+
+
+#Next, enable sudo privileges for your newly created user: <YOUR USERNAME> #
+# by editting the sudoers file.
+
+# which MUST BE EDITED WITH THE VISUDO COMMAND AS ROOT #
+
+EDITOR=nano visudo
+
+# If you get a error msg: "nano is not installed / nano is not a command"
+# Install nano: #
+sudo pacman -S nano
+
+
+EDITOR=nano visudo
+
+# Edit the file,  find the line where it says: #
+
+## Uncomment to allow members of group wheel to execute any command
+# %wheel ALL=(ALL) ALL
+
+
+# uncomment this line: #
+# %wheel ALL=(ALL) ALL
+
+# so it looks like this: #
+ %wheel ALL=(ALL) ALL
+
+
+
+
+# close and save the file #
+
+------------------------------------------------------------------
+---------------# installing  xfce4 and nvidia #-------------------
+------# Installation of drivers, and desktop environment(s) #-----
+
+
+# If any of these says not found, I often uncommenting multilib in /etc/pacman.conf #
+# and trying again.
+
+
+#  #
+sudo pacman -S nvidia
+sudo pacman -S nvidia-utils
+
+#  #
+pacman -S pulseaudio pulseaudio-alsa xorg xorg-xinit xorg-server
+pacman -S xfce4 lightdm lightdm-gtk-greeter
+
+#  #
+echo "exec startxfce4" > ~/.xinitrc  
+
+# Enable lightdm #
+systemctl enable lightdm
+
+# start a graphical interface session #
+startx
+
+# Reboot after this To see so everything works correctly #
+
+#  if theres no gui, or other problems: #
+You can access a Terminal from the Login screen, by pressing Ctrl+Alt+F1 (or F2 or 3 and so on)
+
+We will continue in part 2 where I will explain how to configure this Arch Setup, in order to use QEMU with GPU Passtrough.
+
+
+
+
+-------------------------------------------------------------------
+
+Arch Linux Installation with GPU Pass-trough PART 1 OF 2
+-------------------------------------------------------------------- END
+
+
+
+
+
+
+
+
+-------------------------------------------------------------------
+
+Arch Linux Installation with GPU Pass-trough PART 2 OF 2
+-------------------------------------------------------------------- START
+
+# This is the last part of my tutorial, If you encounter (Or have encountered) any problems, or have any questions or suggestions - feel free to contact me! #
+
+# Installing the required packages: #
+# if some packages isn't found: edit the pacman.conf to enable multilib #
+
+# update and upgrade the system #
+sudo pacman -Syy
+sudo pacman -Syyu
+sudo pacman -Syuud
+# update and upgrade the system #
+
+# Install the required packages
+
+sudo pacman -S qemu libvirt edk2-ovmf virt-manager
+sudo pacman -S ebtables ensmasq
+
+--------------------------------------------------------------------------
+# Check if IOMMU is allready enabled: #
+
+dmesg | grep IOMMU
+
+[    0.075421] DMAR-IR: IOAPIC id 2 under DRHD base  0xfed90000 IOMMU 0
+[    0.325005] AMD-Vi: AMD IOMMUv2 driver by Joerg Roedel <jroedel@suse.de>
+[    0.325006] AMD-Vi: AMD IOMMUv2 functionality not available on this system
+
+# We see above, I have not IOMMU enabled. #
+--------------------------------------------------------------------------
+
+# GREP our cards to passtrough: #
+
+lspci -nn | grep -iP "VGA|audio"
+
+# In my case,  It outputs this: #
+
+00:1f.3 Audio device [0403]: Intel Corporation 100 Series/C230 Series Chipset Family HD Audio Controller [8086:a170] (rev 31)
+01:00.0 VGA compatible controller [0300]: NVIDIA Corporation GP104 [GeForce GTX 1060 6GB] [10de:1b83] (rev a1)
+01:00.1 Audio device [0403]: NVIDIA Corporation GP104 High Definition Audio Controller [10de:10f0] (rev a1)
+[william@HOSTNAME ~]$
+
+# Wee see my GPU form here: and my audio controller:(We want to pass both trough) #
+----------------------------------------------------------
+
+## to see what current kernel driver is in use: #
+ lspci -vnn | grep -iP "vga|amdgpu|nvidia|nouveau|vfio-pci"
+
+01:00.0 VGA compatible controller [0300]: NVIDIA Corporation GP104 [GeForce GTX 1060 6GB] [10de:1b83] (rev a1) (prog-if 00 [VGA controller])
+    Kernel driver in use: nvidia
+    Kernel modules: nouveau, nvidia_drm, nvidia
+01:00.1 Audio device [0403]: NVIDIA Corporation GP104 High Definition Audio Controller [10de:10f0] (rev a1)
+
+​
+
+
+# Following this guide, I will refer to my own Devices (which obviously you must replace with your own IDS):
+# NVIDIA Corporation GP104 [GeForce GTX 1060 6GB] [10de:1b83]
+# NVIDIA Corporation GP104 High Definition Audio Controller [10de:10f0]
+
+# And the IDS of those are:
+# [10de:1b83] and [10de:10f0]
+
+--------------------------------------------------------------------------
+And to show you my current, nvidia-smi output:
+
+[william@HOSTNAME ~]$ nvidia-smi
+
+
+Thu Jul 16 16:44:01 2020       
++-----------------------------------------------------------------------------+
+| NVIDIA-SMI 450.57       Driver Version: 450.57       CUDA Version: 11.0     |
+|-------------------------------+----------------------+----------------------+
+| GPU  Name        Persistence-M| Bus-Id        Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp  Perf  Pwr:Usage/Cap|         Memory-Usage | GPU-Util  Compute M. |
+|                               |                      |               MIG M. |
+|===============================+======================+======================|
+|   0  GeForce GTX 106...  Off  | 00000000:01:00.0  On |                  N/A |
+|  0%   46C    P0    31W / 200W |    214MiB /  6075MiB |      0%      Default |
+|                               |                      |                  N/A |
++-------------------------------+----------------------+----------------------+
+                                                                               
++-----------------------------------------------------------------------------+
+| Processes:                                                                  |
+|  GPU   GI   CI        PID   Type   Process name                  GPU Memory |
+|        ID   ID                                                   Usage      |
+|=============================================================================|
+|    0   N/A  N/A       406      G   /usr/lib/Xorg                     201MiB |
+|    0   N/A  N/A       507      G   xfwm4                               2MiB |
++-----------------------------------------------------------------------------+
+ 
+
+
+
+######################### Edit the grub file: #########################
+
+# Edit the grub file
+sudo nano /etc/default/grub
+
+
+#find and edit this line:
+GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 quiet"
+
+to this:
+# WARNING - IF YOU HAVE INTEL, YOU MAY CONTINUE,  
+#    
+#     BUT IF YOU HAVE AMD CPU:
+#     INSTEAD OF "intel_iommu=on" type: "amd_iommu=on"
+#
+
+#I have Intel, So I type:  intel_iommu=on#
+GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 quiet intel_iommu=on"
+
+
+# Close and save the file,
+# Update the current GRUB config:
+
+sudo grub-mkconfig -o /boot/grub/grub.cfg
+----------------------------------------------------------------
+
+
+# Reboot your computer #
+
+
+# Now, IOMMU should be enabled: #
+
+[william@HOSTNAME ~]$ dmesg | grep IOMMU
+[    0.035458] DMAR: IOMMU enabled
+[    0.075584] DMAR-IR: IOAPIC id 2 under DRHD base  0xfed90000 IOMMU 0
+[    0.305196] AMD-Vi: AMD IOMMUv2 driver by Joerg Roedel <jroedel@suse.de>
+[    0.305196] AMD-Vi: AMD IOMMUv2 functionality not available on this system
+
+# this output indicates you have IOMMU enabled successfully #
+
+-----------------------------------------------------------------------------------------------
+------------------------------------find pci card to pass-trough--------------------
+-----------------------------------------------------------------------------------------------
+
+william@HOSTNAME ~]$ lspci -nn | grep -iP "VGA|audio"
+
+01:00.0 VGA compatible controller [0300]: NVIDIA Corporation GP104 [GeForce GTX 1060 6GB] [10de:1b83] (rev a1)
+01:00.1 Audio device [0403]: NVIDIA Corporation GP104 High Definition Audio Controller [10de:10f0] (rev a1)
+
+# In my case, My 2 ids are: #
+ [10de:1b83]
+ [10de:10f0]
+
+
+|-------------------------------------------|
+create this file :
+/etc/modprobe.d/vfio.conf
+
+#With the following content:
+#Replace the IDS with your IDS
+
+options vfio-pci ids=10de:1b83,10de:10f0
+
+|-------------------------------------------|
+
+
+# We now need to edit this file in order to load it before the graphics driver binds to the card:
+/etc/mkinitcpio.conf
+
+
+# find the line "MODULES = ()"
+# And,  write these into it:
+# vfio_pci vfio vfio_iommu_type1 vfio_virqfd
+
+# So, MODULES should look something like this:
+
+MODULES=(vfio_pci vfio vfio_iommu_type1 vfio_virqfd )
+
+
+# @Also, ensure that the modconf hook is included in the HOOKS list of mkinitcpio.conf:
+# @ "HOOKS=(... modconf ...)"
+
+
+# Save and close the file,  re generate the the initial ramdisk environment:
+sudo mkinitcpio -P
+
+
+# Warning! when you reboot,  If you are connected to your GPU now,  #
+# the resolution will be a bit off,  (In my case it was) (hopefully still readable though) #
+
+
+# Reboot now. #
+
+
+--------------------------------Connecting a additional monitor------------------------------------
+
+So, I would advice you to connect a second monitor (If you have one) to the motherboard.
+(I connected a DVI cable to my Motherboard and a HDMI cable disconnected from the GPU.)
+
+(Now I only have 1 monitor active trough DVI.)
+
+
+    ##########    Verifying that the configuration worked    ##########
+
+​
+
+​
+
+//To show you the output of nvidia-smi now:
+[william@HOSTNAME ~]$ nvidia-smi
+
+NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver. Make sure that the latest NVIDIA driver is installed and running.
+
+### So, now we hopefully have vfio-pci loaded: ###
+# Let's check if they are: #
+
+[william@HOSTNAME ~]$ dmesg | grep -i vfio
+
+
+[    0.923656] VFIO - User Level meta-driver version: 0.3
+[    0.926415] vfio-pci 0000:01:00.0: vgaarb: changed VGA decodes: olddecodes=io+mem,decodes=io+mem:owns=none
+[    0.942831] vfio_pci: add [10de:1b83[ffffffff:ffffffff]] class 0x000000/00000000
+[    0.959514] vfio_pci: add [10de:10f0[ffffffff:ffffffff]] class 0x000000/00000000
+[    2.246828] vfio-pci 0000:01:00.0: vgaarb: changed VGA decodes: olddecodes=io+mem,decodes=io+mem:owns=none
+
+ 
+
+
+# From Docs:
+"It is not necessary for all devices (or even expected device) from vfio.conf to be in dmesg output. Sometimes a device does not appear in output at boot but actually is able to be visible and operate-able in guest VM. "#
+ 
+
+
+--------------------------------------------------------------------------------------------------------
+Lets check our 2 ids 1 by 1 to see that the correct kernel driver is in use:
+--------------------------------------------------------------------------------------------------------
+[william@HOSTNAME ~]$ lspci -nnk -d 10de:1b83
+
+ 
+
+
+01:00.0 VGA compatible controller [0300]: NVIDIA Corporation GP104 [GeForce GTX 1060 6GB] [10de:1b83] (rev a1)
+    Subsystem: Micro-Star International Co., Ltd. [MSI] Device [1462:328d]
+    Kernel driver in use: vfio-pci
+    Kernel modules: nouveau, nvidia_drm, nvidia
+
+​
+
+​
+
+[william@HOSTNAME ~]$ lspci -nnk -d 10de:10f0
+
+
+01:00.1 Audio device [0403]: NVIDIA Corporation GP104 High Definition Audio Controller [10de:10f0] (rev a1)
+    Subsystem: Micro-Star International Co., Ltd. [MSI] Device [1462:328d]
+    Kernel driver in use: vfio-pci
+    Kernel modules: snd_hda_intel
+
+ 
+
+​
+
+//And it is!
+
+
+--------------------------------------------------------------------------------------------
+Now to the "Fun" Part!  Installing Qemu and configuring Libvirt!--
+--------------------------------------------------------------------------------------------
+
+
+sudo pacman qemu libvirt edk2-ovmf virt-manager
+sudo pacman -S qemu-block-gluster
+
+# I installed qemu-block-gluster too, to avoid some problems I got,
+
+# You may not have these problems, so you can of course try without. #
+
+
+# Enable and start the libvirtdaemons service and socket. #
+
+[william@HOSTNAME ~]$ sudo systemctl enable libvirtd.socket
+[william@HOSTNAME ~]$ sudo systemctl enable libvirtd.service
+
+--------------------------------------------------------------------------
+
+
+# sometimes you need to manually activate the virtual network, to do this:
+# start virt-manager and go to Connection Details -> Network tab -> Click the Play (|>) button to activate the default virtual network. #
+
+# If you get the firewall problem, "Firewall back-end" - like error message, Install these: #
+
+sudo pacman -Sy ebtables dnsmasq
+
+# and restart the libvirtd services #
+sudo systemctl restart libvirtd
+
+
+--------------------------------------------------------------------------
+
+Now,  Your pretty much done with the system configuring and set-up  of your main system!
+
+
+Now Its only a few things left, the things are:
+1 Making a VM (Windows 10)
+
+2 Editing the VMS settings
+ (Firmware, Chip set, CPU, Boot Orders, ) -
+ And of course adding Hardware (Your GPU and Audio Controller)
+
+
+#####################################################################
+CREATE THE VM,  CHOOSE THE WINDOWS 10 ISO :
+
+Download here:   https://www.microsoft.com/en-us/software-download/windows10ISO
+
+# My example config: #
+
+CPU  4
+RAM  8GB
+CHIP SET Q35
+FIRMWARE: UEFI x86_64: /usr/share/edk2-ovmf/x64/OVMF_CODE.fd
+
+
+CURRENT ALLOCATION: 4
+MAX ALLOCATION: 8
+
+sockets: 1
+Cores: 4
+threads: 2
+
+
+BOOT OPTIONS
+SATA CDROM 1  FIRST  (path to the Windows 10 ISO)
+
+# Removed these Hardware: #
+
+DISPLAY SPICE
+SOUND ICH9
+VIDEO QXL
+
+BEFORE Next step:  Advice you to  CONNECT YOUR HDMI (In my case HDMI)   TO  YOUR GPU.
+
+
+ADD HARDWARE:
+        PCI HOST DEVICE  GPU    NVIDIA Corporation GP 104 [GeForce GTX 1060 GB]
+        NVIDIA Corporation GP104 High Definition Audio Controller
+
+I would advice you to add the additional USB-Mouse and USB-Keyboard here, too. If you have any.
+
+
+ Your pretty much done with the VM config now, except It's just 2 things left to do,
+And,  Fire it up!  Press the "Play" |> BUTTON   Up- top left corner, to start the  windows 10 VM.
+Install the Windows 10,  And when its done, (Booted up to desktop, etc.)    
+Continue below:
+
+These 2 things are:
+
+    1. Download VirtioDrivers ISO from:
+          https://docs.fedoraproject.org/en-US/quick-docs/creating-windows-virtual-machines-using-virtio-drivers/
+          @ Direct downloads:  I chose :  Stable virtio-win iso
+              //And add a CD ROM  into the VM,  chose the virtinst driver iso,  and attach it to the VM.
+
+    2. Edit the XML of the Windows10 VM:
+        Add those lines:
+
+        This line Inside the
+        <hyperv>
+            Here, you add the line:vendor_id state="on" value="anythin"/>
+        </hyperv>
+
+        <vendor_id state="on" value="anythin"/>
+    <kvm>
+      <hidden state="on"/>
+    </kvm>
+
+    Soo, your complete WIN10 VM's  XML  Should look something like this:
+
+    <hyperv>
+          <relaxed state="on"/>
+              <vapic state="on"/>
+              <spinlocks state="on" retries="8191"/>
+      <vendor_id state="on" value="anythin"/>
+    </hyperv>
+
+    <kvm>
+      <hidden state="on"/>
+    </kvm>
+
+-----------------------------------------------------------------------------------------------
+Now, The only last thing needed is: Boot up the vm,  and go to device-manager
+(right click on start button, DeviceManager,
+ Got to the GPU -->  
+Right click the GPU and choose "Install/Update driver," ->
+ "Manually chose driver" -->
+Choose the Virtio Driver.ISO  That you attached,  
+(e.g D:\) and click next.)
+ 
+
+
+ D O N E
+ Have a good day, and Thanks very much for reading my tutorial. I truly APPRECIATE IT.
+
+​
+
+​
+
+​
+
+​
+
+Hope you liked this tutorial, I spent A LOT of time writing this one, and correcting, re-writing, and from scratch tried this as many times as I needed to be completely sure that it was working. Therefore, if you encounter any problem in this guide, please contact me and I will fix it as soon as possible.
+
+thank you!
+ 
+Resources I used in this guide:
+https://wiki.archlinux.org/ - Arch Linux Docs, And the amazing community!
+​
+Microsoft Windows: For windows10 ISO Download:
+https://www.microsoft.com/en-us/software-download/windows10
+
+-------------------------------------------------------------------
+
+Arch Linux Installation with GPU Pass-trough PART 2 OF 2
+-------------------------------------------------------------------- END
+
+
+
+common problems & solutions/workarounds:
+
+Problem:  (P)
+Solution: (S)
+
+(P)
+Can't access internal hard drive
+("wrong helper program, (...)"
+
+
+(S)
+Install the NTFS-3G package:
+sudo pacman -S ntfs-3g
+
+
+
+(P)
+No audio output!
+
+
+(S)
+Install the pavucontrol package:
+sudo pacman -S pavucontrol
+
+Open pavucontrol,
+Make sure that nothing is muted. (In my case - some devices were muted)
+
+
+
+
+
+Originally taken from:
+https://unixresearcher.wixsite.com/linux-tutorials
+
