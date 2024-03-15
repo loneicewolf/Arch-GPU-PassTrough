@@ -1,14 +1,8 @@
 # Arch-GPU-PassTroughGuide(byWilliam Martens).txt
+# (by William Martens)
 
-Complete - Step-By-Step Guide:
-Arch Linux Install With GPU Pass-trough Using QEMU
-
-(by William Martens)
-
-
-Originally taken from:
-https://unixresearcher.wixsite.com/linux-tutorials
-
+##################################################################
+# Complete - Step-By-Step Guide: - Arch Linux Install With GPU Pass-trough Using QEMU  #
 
 
 Part 1 - Arch Installation.
