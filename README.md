@@ -15,10 +15,3 @@ I have tried playing VR in a HVM, with my GPU passed-trough and my VR equipment.
 Will create a tutorial like this for 2 other OS, too:)
 [] Debian
 [] Ubuntu
-
-Originally taken from:
-https://unixresearcher.wixsite.com/linux-tutorials
-
-
-Check out my New site (New, upcoming projects!)
-https://unixresearcher.wixsite.com/thecryptanalyst
