@@ -1,5 +1,3 @@
-# Arch-GPU-PassTroughGuide(byWilliam Martens).txt
-# (by William Martens)
 
 ##################################################################
 # Complete - Step-By-Step Guide: - Arch Linux Install With GPU Pass-trough Using QEMU  #
@@ -747,10 +745,4 @@ sudo pacman -S pavucontrol
 Open pavucontrol,
 Make sure that nothing is muted. (In my case - some devices were muted)
 
-
-
-
-
-Originally taken from:
-https://unixresearcher.wixsite.com/linux-tutorials
 
